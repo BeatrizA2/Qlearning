@@ -2,6 +2,7 @@ import connection as cn
 import numpy as np
 import random
 
+#Estabelece a conexão TCP
 s = cn.connect(2037)
 
 # Define os hiperparâmetros do Q-Learning
@@ -9,19 +10,21 @@ alpha = 0.5
 gamma = 0.9
 epsilon = 0.25
 
+#Define o número de colunas (número de possíveis ações) e o número de linhas (possíveis estados) da Q table
 num_actions = 3
 num_possible_states = 96
 
+#Estado inicial do Amongois
 state = 0
 
+#Array das possíveis ações do personagem
+actions = ["left", "right", "jump"]
 
+#Iniacializa a Q-table com todos os elementos iguais a zero
 Q_table = np.zeros((num_possible_states, num_actions))
 
-# Cria um array com as possíveis ações do personagem 
-actions = ["left", "rigth", "jump"]
 
-
-# Define a função para escolher a próxima ação a ser tomada
+#Função que escolhe a próxima ação a ser tomada
 def epsilon_greedy(Q, state, epsilon):
     """
     Implementação da política epsilon-greedy.
@@ -38,15 +41,17 @@ def epsilon_greedy(Q, state, epsilon):
     # Gera um número aleatório entre 0 e 1
     rand_num = random.uniform(0, 1)
 
+
     if rand_num < epsilon:
-        # Escolhe uma ação aleatória
-        action = random.choice(["left", "right", "jump"])
+        # Escolhe uma ação aleatória: 0 - left, 1 - rigth e 2 - jump
+        action = random.choice([0, 1, 2])
     else:
         # Escolhe a melhor ação de acordo com a Q-Table
-        actions = ["left", "right", "jump"]
+        actions = [0, 1, 2]
         best_action = actions[0]
         best_value = Q[state][best_action]
 
+        #Verifica qual é a ação que fornece a melhor recompensa para o estado especificado
         for action in actions[1:]:
             value = Q[state][action]
             if value > best_value:
@@ -59,14 +64,26 @@ def epsilon_greedy(Q, state, epsilon):
 
 # Inicia o loop principal do jogo
 while True:
+    #Estado do persongem antes da ação
     previous_state = state
-    # Obtém o estado atual e a recompensa
-    state, reward = cn.get_state_reward(s, action)
 
     #Escolhe a próxima ação
-    next_action = epsilon_greedy(Q_table, state, epsilon)
-    action = actions.index(next_action)
+    action = epsilon_greedy(Q_table, state, epsilon)
 
+    # Obtém o estado pós a ação e a recompensa decorrente
+    state, reward = cn.get_state_reward(s, actions[action])
+    state = int(state, 2) #transforma o estado em inteiro
 
-    Q_table[previous_state, action] += alpha * (reward + gamma * np.max(Q_table[state, :]) - Q_table[previous_state, action])
-    print(Q_table)
+    #Atualiza a Q_table
+    Q_table[previous_state][action] += alpha * (reward + gamma * np.max(Q_table[state]) - Q_table[previous_state][action])
+
+    #Condição de parada: personagem alcança a plataforma preta - recompensa de 300 pontos
+    if(reward == 300):
+        break
+
+#Passa os q values da Q table para o arquivo "resultado.txt"
+with open("resultado.txt", "w") as f:
+        for line in Q_table:
+            line_str = " ".join(str(elem) for elem in line)
+            f.write(line_str + "\n")
+f.close()
